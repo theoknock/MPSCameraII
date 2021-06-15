@@ -1,6 +1,6 @@
 //
 //  ShaderTypes.h
-//  iOSGameTemplate
+//  MetalProjectStage-1
 //
 //  Created by Xcode Developer on 6/2/21.
 //
@@ -44,5 +44,13 @@ typedef struct
     matrix_float4x4 modelViewMatrix;
 } Uniforms;
 
+typedef struct
+{
+    float rotation;
+} PerFrameDynamicUniforms;
+
 #endif /* ShaderTypes_h */
 
+/*
+ 
+ */

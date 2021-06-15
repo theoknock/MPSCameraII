@@ -3,10 +3,12 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B9AD953D267925D000FC473F /* Camera.m in Sources */ = {isa = PBXBuildFile; fileRef = B9AD953C267925D000FC473F /* Camera.m */; };
+		B9AD95412679298300FC473F /* GlobalDispatch.c in Sources */ = {isa = PBXBuildFile; fileRef = B9AD95402679298200FC473F /* GlobalDispatch.c */; };
 		B9E82A4F2667E046004824C5 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A4E2667E046004824C5 /* AppDelegate.m */; };
 		B9E82A522667E046004824C5 /* Renderer.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A512667E046004824C5 /* Renderer.m */; };
 		B9E82A552667E046004824C5 /* GameViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A542667E046004824C5 /* GameViewController.m */; };
@@ -17,11 +19,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B9E82A4A2667E046004824C5 /* iOSGameTemplate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSGameTemplate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B9AD953B267925D000FC473F /* Camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Camera.h; sourceTree = "<group>"; };
+		B9AD953C267925D000FC473F /* Camera.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Camera.m; sourceTree = "<group>"; };
+		B9AD953F2679294C00FC473F /* GlobalDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GlobalDispatch.h; sourceTree = "<group>"; };
+		B9AD95402679298200FC473F /* GlobalDispatch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = GlobalDispatch.c; sourceTree = "<group>"; };
+		B9E82A4A2667E046004824C5 /* MetalProjectStage-1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MetalProjectStage-1.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9E82A4D2667E046004824C5 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		B9E82A4E2667E046004824C5 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		B9E82A502667E046004824C5 /* Renderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Renderer.h; sourceTree = "<group>"; };
-		B9E82A512667E046004824C5 /* Renderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Renderer.m; sourceTree = "<group>"; };
+		B9E82A512667E046004824C5 /* Renderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Renderer.m; sourceTree = "<group>"; wrapsLines = 0; };
 		B9E82A532667E046004824C5 /* GameViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GameViewController.h; sourceTree = "<group>"; };
 		B9E82A542667E046004824C5 /* GameViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GameViewController.m; sourceTree = "<group>"; };
 		B9E82A562667E046004824C5 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
@@ -46,7 +52,7 @@
 		B9E82A412667E046004824C5 = {
 			isa = PBXGroup;
 			children = (
-				B9E82A4C2667E046004824C5 /* iOSGameTemplate */,
+				B9E82A4C2667E046004824C5 /* MetalProjectStage-1 */,
 				B9E82A4B2667E046004824C5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,12 +60,12 @@
 		B9E82A4B2667E046004824C5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B9E82A4A2667E046004824C5 /* iOSGameTemplate.app */,
+				B9E82A4A2667E046004824C5 /* MetalProjectStage-1.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B9E82A4C2667E046004824C5 /* iOSGameTemplate */ = {
+		B9E82A4C2667E046004824C5 /* MetalProjectStage-1 */ = {
 			isa = PBXGroup;
 			children = (
 				B9E82A4D2667E046004824C5 /* AppDelegate.h */,
@@ -74,16 +80,20 @@
 				B9E82A5C2667E048004824C5 /* Assets.xcassets */,
 				B9E82A5E2667E048004824C5 /* Info.plist */,
 				B9E82A5F2667E048004824C5 /* main.m */,
+				B9AD953F2679294C00FC473F /* GlobalDispatch.h */,
+				B9AD95402679298200FC473F /* GlobalDispatch.c */,
+				B9AD953B267925D000FC473F /* Camera.h */,
+				B9AD953C267925D000FC473F /* Camera.m */,
 			);
-			path = iOSGameTemplate;
+			path = "MetalProjectStage-1";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B9E82A492667E046004824C5 /* iOSGameTemplate */ = {
+		B9E82A492667E046004824C5 /* MetalProjectStage-1 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B9E82A632667E048004824C5 /* Build configuration list for PBXNativeTarget "iOSGameTemplate" */;
+			buildConfigurationList = B9E82A632667E048004824C5 /* Build configuration list for PBXNativeTarget "MetalProjectStage-1" */;
 			buildPhases = (
 				B9E82A462667E046004824C5 /* Sources */,
 				B9E82A472667E046004824C5 /* Frameworks */,
@@ -93,9 +103,9 @@
 			);
 			dependencies = (
 			);
-			name = iOSGameTemplate;
+			name = "MetalProjectStage-1";
 			productName = iOSGameTemplate;
-			productReference = B9E82A4A2667E046004824C5 /* iOSGameTemplate.app */;
+			productReference = B9E82A4A2667E046004824C5 /* MetalProjectStage-1.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -111,8 +121,8 @@
 					};
 				};
 			};
-			buildConfigurationList = B9E82A452667E046004824C5 /* Build configuration list for PBXProject "iOSGameTemplate" */;
-			compatibilityVersion = "Xcode 9.3";
+			buildConfigurationList = B9E82A452667E046004824C5 /* Build configuration list for PBXProject "MetalProjectStage-1" */;
+			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -124,7 +134,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B9E82A492667E046004824C5 /* iOSGameTemplate */,
+				B9E82A492667E046004824C5 /* MetalProjectStage-1 */,
 			);
 		};
 /* End PBXProject section */
@@ -147,9 +157,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				B9E82A602667E048004824C5 /* main.m in Sources */,
+				B9AD95412679298300FC473F /* GlobalDispatch.c in Sources */,
 				B9E82A572667E046004824C5 /* Shaders.metal in Sources */,
 				B9E82A522667E046004824C5 /* Renderer.m in Sources */,
 				B9E82A552667E046004824C5 /* GameViewController.m in Sources */,
+				B9AD953D267925D000FC473F /* Camera.m in Sources */,
 				B9E82A4F2667E046004824C5 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -287,12 +299,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = N9987K9442;
-				INFOPLIST_FILE = iOSGameTemplate/Info.plist;
+				INFOPLIST_FILE = "MetalProjectStage-1/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.iOSGameTemplate;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.blogspot.demonicactivity.bush.alan.james.MetalProjectStage-1";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -305,12 +317,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = N9987K9442;
-				INFOPLIST_FILE = iOSGameTemplate/Info.plist;
+				INFOPLIST_FILE = "MetalProjectStage-1/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.iOSGameTemplate;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.blogspot.demonicactivity.bush.alan.james.MetalProjectStage-1";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -319,7 +331,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B9E82A452667E046004824C5 /* Build configuration list for PBXProject "iOSGameTemplate" */ = {
+		B9E82A452667E046004824C5 /* Build configuration list for PBXProject "MetalProjectStage-1" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B9E82A612667E048004824C5 /* Debug */,
@@ -328,7 +340,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B9E82A632667E048004824C5 /* Build configuration list for PBXNativeTarget "iOSGameTemplate" */ = {
+		B9E82A632667E048004824C5 /* Build configuration list for PBXNativeTarget "MetalProjectStage-1" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B9E82A642667E048004824C5 /* Debug */,

@@ -1,6 +1,6 @@
 //
 //  GameViewController.h
-//  iOSGameTemplate
+//  MetalProjectStage-1
 //
 //  Created by Xcode Developer on 6/2/21.
 //
