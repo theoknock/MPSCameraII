@@ -37,6 +37,8 @@ static const NSUInteger MaxBuffersInFlight = 3;
     float _rotation;
     
     MTKMesh *_mesh;
+    
+    MTKView *metalView;
 }
 
 -(nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
@@ -64,6 +66,7 @@ static const NSUInteger MaxBuffersInFlight = 3;
         CFRelease(textureUsageValue);
         CFRelease(cacheAttributes);
         
+        metalView = view;
         [[Camera video] setVideoOutputDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate> _Nullable)self];
     }
     
@@ -75,8 +78,8 @@ static const NSUInteger MaxBuffersInFlight = 3;
     view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
     view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     view.sampleCount = 1;
-    [view setPreferredFramesPerSecond:30];
     [view setPaused:TRUE];
+    [view setEnableSetNeedsDisplay:FALSE];
     
     _mtlVertexDescriptor = [[MTLVertexDescriptor alloc] init];
     
@@ -179,6 +182,8 @@ static const NSUInteger MaxBuffersInFlight = 3;
         CFRelease(metalTextureRef);
     }
     
+    [metalView draw];
+
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
 }
 
