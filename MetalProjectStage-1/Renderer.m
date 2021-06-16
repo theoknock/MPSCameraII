@@ -15,6 +15,14 @@
 
 static const NSUInteger MaxBuffersInFlight = 3;
 
+@interface Renderer ()
+
+@property (strong, nonatomic, setter=setDrawTexture:) void(^drawTexture)(void);
+@property (strong, nonatomic, setter=setRenderTexture:) id<MTLTexture>_Nonnull(^ _Nonnull render_texture)(void);
+@property (strong, nonatomic, setter=setTextureCache:) CVMetalTextureCacheRef _Nonnull(^ _Nonnull texture_cache)(void);
+
+@end
+
 @implementation Renderer
 {
     dispatch_semaphore_t _inFlightSemaphore;
@@ -24,8 +32,7 @@ static const NSUInteger MaxBuffersInFlight = 3;
     id <MTLBuffer> _dynamicUniformBuffer[MaxBuffersInFlight];
     id <MTLRenderPipelineState> _pipelineState;
     id <MTLDepthStencilState> _depthState;
-    
-    CVMetalTextureCacheRef textureCache;
+ 
     CFDictionaryRef textureCacheAttributes;
     id <MTLTexture> _colorMap;
     MTLVertexDescriptor *_mtlVertexDescriptor;
@@ -34,14 +41,33 @@ static const NSUInteger MaxBuffersInFlight = 3;
     
     matrix_float4x4 _projectionMatrix;
     
-    float _rotation;
+    NSUInteger _rotation;
     
     MTKMesh *_mesh;
-    
-    MTKView *metalView;
 }
 
--(nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
+@synthesize drawTexture     = _drawTexture,
+render_texture  = _render_texture,
+texture_cache = _texture_cache;
+
+- (void)setDrawTexture:(void (^)(void))drawTexture {
+    drawTexture = _drawTexture;
+}
+
+- (void)setRenderTexture:(id<MTLTexture>  _Nonnull (^)(void))render_texture {
+    _render_texture = render_texture;
+    _drawTexture();
+}
+
+- (void)setTextureCache:(CVMetalTextureCacheRef  _Nonnull (^)(void))texture_cache {
+    _texture_cache = texture_cache;
+}
+
+- (CVMetalTextureCacheRef  _Nonnull (^)(void))texture_cache {
+    return _texture_cache;
+}
+
+- (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 {
     self = [super init];
     if(self)
@@ -60,13 +86,23 @@ static const NSUInteger MaxBuffersInFlight = 3;
         CFIndex textureCacheAttributesCount = 2;
         CFDictionaryRef cacheAttributes = CFDictionaryCreate(NULL, (const void **)textureCacheKeys, (const void **)textureCacheValues, textureCacheAttributesCount, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         
+        __block CVMetalTextureCacheRef textureCache;
         CVMetalTextureCacheCreate(NULL, cacheAttributes, _device, NULL, &textureCache);
-        
         CFShow(cacheAttributes);
         CFRelease(textureUsageValue);
         CFRelease(cacheAttributes);
         
-        metalView = view;
+        _texture_cache =
+        ^ (CVMetalTextureCacheRef texture_cache) {
+            return ^ CVMetalTextureCacheRef () {
+                return texture_cache;
+            };
+        }(textureCache);
+        
+        _drawTexture = ^() {
+            [view draw];
+        };
+        
         [[Camera video] setVideoOutputDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate> _Nullable)self];
     }
     
@@ -170,21 +206,24 @@ static const NSUInteger MaxBuffersInFlight = 3;
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
     
-    _colorMap = nil;
-    {
-        MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
-        CVMetalTextureRef metalTextureRef = NULL;
-        CVMetalTextureCacheCreateTextureFromImage(NULL, textureCache, pixelBuffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer), 0, &metalTextureRef);
-        _colorMap = CVMetalTextureGetTexture(metalTextureRef);
-        CFRelease(metalTextureRef);
-    }
+    _render_texture = ^ (CVMetalTextureCacheRef texture_cache_ref) {
+        return ^id<MTLTexture> _Nonnull(void) {
+            CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+            id<MTLTexture> texture = nil;
+            {
+                MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
+                CVMetalTextureRef metalTextureRef = NULL;
+                CVMetalTextureCacheCreateTextureFromImage(NULL, texture_cache_ref, pixelBuffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer), 0, &metalTextureRef);
+                texture = CVMetalTextureGetTexture(metalTextureRef);
+                CFRelease(metalTextureRef);
+            }
+            
+            return texture;
+        };
+    } (_texture_cache());
     
-    [metalView draw];
-
-    CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    _drawTexture();
 }
 
 - (void)drawInMTKView:(nonnull MTKView *)view
@@ -223,7 +262,7 @@ static const NSUInteger MaxBuffersInFlight = 3;
         
         {
             PerFrameDynamicUniforms dynamicUniforms;
-            dynamicUniforms.rotation = _rotation++ / view.preferredFramesPerSecond;
+            dynamicUniforms.rotation = (float)(_rotation++ % NSUIntegerMax) / view.preferredFramesPerSecond;
             
             [renderEncoder setVertexBytes:&dynamicUniforms
                                    length:sizeof(dynamicUniforms)
@@ -245,7 +284,7 @@ static const NSUInteger MaxBuffersInFlight = 3;
             }
         }
         
-        [renderEncoder setFragmentTexture:_colorMap
+        [renderEncoder setFragmentTexture:_render_texture()
                                   atIndex:TextureIndexColor];
         
         for(MTKSubmesh *submesh in _mesh.submeshes)
