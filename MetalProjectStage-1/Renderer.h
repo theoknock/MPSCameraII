@@ -6,6 +6,7 @@
 //
 
 #import <MetalKit/MetalKit.h>
+#import <MetalPerformanceShaders/MetalPerformanceShaders.h>
 #import <AVFoundation/AVFoundation.h>
 
 // Our platform independent renderer class.   Implements the MTKViewDelegate protocol which

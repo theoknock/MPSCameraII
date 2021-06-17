@@ -69,10 +69,10 @@ matrix_float4x4 matrix_perspective_right_hand(float fovyRadians, float aspect, f
 
 vertex ColorInOut vertexShader(Vertex in [[stage_in]],
                                constant Uniforms & uniforms [[ buffer(BufferIndexUniforms) ]],
-                               constant PerFrameDynamicUniforms &dynamicUniforms  [[ buffer(3) ]])
+                               constant PerFrameDynamicUniforms &perFrameDynamicUniforms  [[ buffer(BufferIndexPerFrameDynamicUniforms) ]])
 {
     vector_float3 rotationAxis = {1, 1, 0};
-    matrix_float4x4 modelMatrix = matrix4x4_rotation(dynamicUniforms.rotation, rotationAxis);
+    matrix_float4x4 modelMatrix = matrix4x4_rotation(perFrameDynamicUniforms.rotation, rotationAxis);
     matrix_float4x4 viewMatrix = matrix4x4_translation(0.0, 0.0, -8.0);
     matrix_float4x4 modelViewMatrix = viewMatrix * modelMatrix;
     
@@ -98,3 +98,24 @@ fragment float4 fragmentShader(ColorInOut in [[stage_in]],
 
     return float4(colorSample);
 }
+
+//// Rec. 709 luma values for grayscale image conversion
+//constant half3 kRec709Luma = half3(0.2126, 0.7152, 0.0722);
+//
+//// Grayscale compute kernel
+//kernel void
+//grayscaleKernel(texture2d<half, access::read>  inTexture  [[texture(0)]],
+//                texture2d<half, access::write> outTexture [[texture(1)]],
+//                uint2                          gid        [[thread_position_in_grid]])
+//{
+//    // Check if the pixel is within the bounds of the output texture
+//    if((gid.x >= outTexture.get_width()) || (gid.y >= outTexture.get_height()))
+//    {
+//        // Return early if the pixel is out of bounds
+//        return;
+//    }
+//
+//    half4 inColor  = inTexture.read(gid);
+//    half  gray     = dot(inColor.rgb, kRec709Luma);
+//    outTexture.write(half4(gray, gray, gray, 1.0), gid);
+//}

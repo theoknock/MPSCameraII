@@ -54,6 +54,7 @@
 			children = (
 				B9E82A4C2667E046004824C5 /* MetalProjectStage-1 */,
 				B9E82A4B2667E046004824C5 /* Products */,
+				B9F96E0E267A41CC00864A6D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -86,6 +87,13 @@
 				B9AD953C267925D000FC473F /* Camera.m */,
 			);
 			path = "MetalProjectStage-1";
+			sourceTree = "<group>";
+		};
+		B9F96E0E267A41CC00864A6D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

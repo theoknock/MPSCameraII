@@ -24,7 +24,8 @@ typedef NS_ENUM(NSInteger, BufferIndex)
 {
     BufferIndexMeshPositions = 0,
     BufferIndexMeshGenerics  = 1,
-    BufferIndexUniforms      = 2
+    BufferIndexUniforms      = 2,
+    BufferIndexPerFrameDynamicUniforms      = 3
 };
 
 typedef NS_ENUM(NSInteger, VertexAttribute)
@@ -38,6 +39,8 @@ typedef NS_ENUM(NSInteger, TextureIndex)
     TextureIndexColor    = 0,
 };
 
+// https://developer.apple.com/documentation/metalperformanceshaders/tuning_hints?language=objc
+
 typedef struct
 {
     matrix_float4x4 projectionMatrix;
@@ -47,6 +50,7 @@ typedef struct
 typedef struct
 {
     float rotation;
+    int   counter;
 } PerFrameDynamicUniforms;
 
 #endif /* ShaderTypes_h */
