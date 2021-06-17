@@ -262,6 +262,17 @@ blk_global     = _blk_global;
         };
     }(equalization);
     
+    MPSCopyAllocator myAllocator = ^id <MTLTexture>(MPSKernel * __nonnull filter, __nonnull id <MTLCommandBuffer> cmdBuf, __nonnull id <MTLTexture> sourceTexture)
+    {
+        MTLPixelFormat format = sourceTexture.pixelFormat;
+        MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: format width: sourceTexture.width height: sourceTexture.height mipmapped: NO];
+     
+        id <MTLTexture> result = [cmdBuf.device newTextureWithDescriptor: d];
+     
+        return result;
+        // d is autoreleased.
+    };
+    
     void(^(^blk_local)(void))(id<MTLCommandBuffer>, id<MTLTexture> *, id<MTLTexture> *) = ^ (MPSImageHistogram * calculate_histogram, MPSImageHistogramEqualization * equalize_histogram) {
         return ^ (void) {
             return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> * sourceTexture, id<MTLTexture> * destinationTexture) {
