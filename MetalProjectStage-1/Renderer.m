@@ -27,7 +27,7 @@ static const NSUInteger MaxBuffersInFlight = 3;
 
 @implementation Renderer
 {
-    dispatch_semaphore_t _inFlightSemaphore;
+dispatch_semaphore_t _inFlightSemaphore;
     id <MTLCommandQueue> _commandQueue;
     
     uint8_t _uniformBufferIndex;
@@ -168,31 +168,30 @@ filter_texture = _filter_texture;
 }
 
 - (void)_loadMPSFilters {
-//    MPSImageHistogramInfo histogramInfo = {
-//        .numberOfHistogramEntries = 256,
-//        .histogramForAlpha = FALSE,
-//        .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
-//        .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
-//    };
-//    MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
-//    MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
-
-    
-    
     void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
-            MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:device sigma:5];
-            MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:device kernelDiameter:9];
-            MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:device kernelWidth:7 kernelHeight:17];
+        MPSImageHistogramInfo histogramInfo = {
+            .numberOfHistogramEntries = 256,
+            .histogramForAlpha = FALSE,
+            .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
+            .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
+        };
+        MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:device histogramInfo:&histogramInfo];
+        MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:device histogramInfo:&histogramInfo];
+        size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
+        id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
+                    
+        MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:device sigma:5];
+        MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:device kernelDiameter:9];
+        MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:device kernelWidth:7 kernelHeight:17];
         return ^ (void) {
             return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture) {
-//                size_t bufferLength = [calculation histogramSizeForSourceFormat:(*sourceTexture).pixelFormat];
-//                id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
-//                [calculation encodeToCommandBuffer:commandBuffer sourceTexture:*sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-//                [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:*sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-//                [equalization encodeToCommandBuffer:commandBuffer sourceTexture:*sourceTexture destinationTexture:*destinationTexture];
                 [filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
                 [filter2 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-                [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+//                [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+                [filter3 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
+                [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
+                [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
+                [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
             };
         };
     }(_device());
@@ -229,7 +228,7 @@ filter_texture = _filter_texture;
     id<MTLTexture> drawingTexture = view.currentDrawable.texture;
     
     _filter_texture(commandBuffer, texture, drawingTexture);
-
+    
     [commandBuffer presentDrawable:view.currentDrawable];
     [commandBuffer commit];
 };
