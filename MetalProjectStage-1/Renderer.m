@@ -98,8 +98,8 @@ filter_texture = _filter_texture;
     {
         _inFlightSemaphore = dispatch_semaphore_create(MaxBuffersInFlight);
         [self _loadMetalWithView:view];
-        [self inPlaceTexture];
-        [self histogramEqualization];
+        [self _initInPlaceTexture];
+        [self _loadMPSFilters];
         
         CFStringRef textureCacheKeys[2] = {kCVMetalTextureCacheMaximumTextureAgeKey, kCVMetalTextureUsage};
         float maximumTextureAge = (1.0 / view.preferredFramesPerSecond);
@@ -157,7 +157,7 @@ filter_texture = _filter_texture;
     _commandQueue = [_device() newCommandQueue];
 }
 
-- (void)inPlaceTexture {
+- (void)_initInPlaceTexture {
     MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
     textureDescriptor.textureType = MTLTextureType2D;
     textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
@@ -167,7 +167,7 @@ filter_texture = _filter_texture;
     _inPlaceTexture = [_device() newTextureWithDescriptor:textureDescriptor];
 }
 
-- (void)histogramEqualization {
+- (void)_loadMPSFilters {
     MPSImageHistogramInfo histogramInfo = {
         .numberOfHistogramEntries = 256,
         .histogramForAlpha = FALSE,
@@ -176,27 +176,10 @@ filter_texture = _filter_texture;
     };
     MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
     MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
-    
-    MPSImageHistogram * (^histogram_calculator)(void) =
-    ^ (MPSImageHistogram * calculator) {
-        return ^ MPSImageHistogram * (void) {
-            return calculator;
-        };
-    }(calculation);
-    
-    MPSImageHistogramEqualization * (^histogram_equalizer)(void) =
-    ^ (MPSImageHistogramEqualization * equalizer) {
-        return ^ MPSImageHistogramEqualization * (void) {
-            return equalizer;
-        };
-    }(equalization);
-    
+
     MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:_device() sigma:5];
-    
     MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:_device() kernelDiameter:9];
-    
     MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:_device() kernelWidth:7 kernelHeight:17];
-    
     
     void(^(^filters)(void))(id<MTLDevice>, id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (MPSImageHistogram * calculate_histogram, MPSImageHistogramEqualization * equalize_histogram) {
         return ^ (void) {
@@ -245,13 +228,6 @@ filter_texture = _filter_texture;
     id<MTLTexture> drawingTexture = view.currentDrawable.texture;
     
     _filter_texture(view.device, commandBuffer, texture, drawingTexture);
-
-//    MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:_device() sigma:5];
-//    [filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(texture) fallbackCopyAllocator:nil];
-//    MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:_device() kernelDiameter:9];
-//    [filter2 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(texture) fallbackCopyAllocator:nil];
-//    MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:_device() kernelWidth:7 kernelHeight:17];
-//    [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:texture destinationTexture:drawingTexture];
 
     [commandBuffer presentDrawable:view.currentDrawable];
     [commandBuffer commit];
