@@ -11,10 +11,14 @@
 
 @interface Renderer ()
 
-@property (strong, nonatomic, setter=setDevice:) id<MTLDevice>_Nonnull(^_Nonnull device)(void);
 @property (strong, nonatomic, setter=setDrawTexture:) void(^draw_texture)(void);
 @property (strong, nonatomic, setter=setRenderTexture:) id<MTLTexture>_Nonnull(^ _Nonnull render_texture)(void);
-@property (strong, nonatomic, setter=setTextureCache:) CVMetalTextureCacheRef _Nonnull(^ _Nonnull texture_cache)(void);
+
+
+@property (strong, nonatomic, setter=setNewDrawTexture:) void(^new_draw_texture)(CVPixelBufferRef pixel_buffer);
+@property (strong, nonatomic, setter=setTextureRenderer:) id<MTLTexture>_Nonnull(^ _Nonnull texture_renderer)(CVPixelBufferRef pixel_buffer);
+
+@property (nonatomic, setter=setTextureCache:) CVMetalTextureCacheRef _Nonnull texture_cache;
 @property (strong, nonatomic, setter=setFilterTexture:) void(^filter_texture)(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture);
 
 @end
@@ -26,19 +30,10 @@
 }
 
 @synthesize
-device         = _device,
 draw_texture   = _draw_texture,
 render_texture = _render_texture,
 texture_cache  = _texture_cache,
 filter_texture = _filter_texture;
-
-- (id<MTLDevice>  _Nonnull (^)(void))device {
-    return _device;
-}
-
-- (void)setDevice:(id<MTLDevice>  _Nonnull (^)(void))device {
-    device = _device;
-}
 
 - (void)setDrawTexture:(void (^)(void))draw_texture {
     _draw_texture = draw_texture;
@@ -57,11 +52,11 @@ filter_texture = _filter_texture;
     return _render_texture;
 }
 
-- (void)setTextureCache:(CVMetalTextureCacheRef  _Nonnull (^)(void))texture_cache {
+- (void)setTextureCache:(CVMetalTextureCacheRef)texture_cache {
     _texture_cache = texture_cache;
 }
 
-- (CVMetalTextureCacheRef  _Nonnull (^)(void))texture_cache {
+- (CVMetalTextureCacheRef)texture_cache {
     return _texture_cache;
 }
 
@@ -78,30 +73,87 @@ filter_texture = _filter_texture;
     self = [super init];
     if(self)
     {
-        [self _loadMetalWithView:view];
-        [self _loadMPSFilters];
+        view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
+        view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+        view.sampleCount = 1;
+        [view setPaused:TRUE];
+        [view setEnableSetNeedsDisplay:FALSE];
+        [view setAutoResizeDrawable:FALSE];
+        [view setFramebufferOnly:FALSE];
+        [view setClearColor:MTLClearColorMake(1.0, 1.0, 1.0, 1.0)];
+        [view setDevice:view.preferredDevice];
         
-        CFStringRef textureCacheKeys[2] = {kCVMetalTextureCacheMaximumTextureAgeKey, kCVMetalTextureUsage};
-        float maximumTextureAge = (1.0 / view.preferredFramesPerSecond);
-        CFNumberRef maximumTextureAgeValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &maximumTextureAge);
-        MTLTextureUsage textureUsage = MTLTextureUsageShaderRead;
-        CFNumberRef textureUsageValue = CFNumberCreate(NULL, kCFNumberNSIntegerType, &textureUsage);
-        CFTypeRef textureCacheValues[2] = {maximumTextureAgeValue, textureUsageValue};
-        CFIndex textureCacheAttributesCount = 2;
-        CFDictionaryRef cacheAttributes = CFDictionaryCreate(NULL, (const void **)textureCacheKeys, (const void **)textureCacheValues, textureCacheAttributesCount, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
+            MPSImageHistogramInfo histogramInfo = {
+                    .numberOfHistogramEntries = 256,
+                    .histogramForAlpha = FALSE,
+                    .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
+                    .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
+            };
+            MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:device histogramInfo:&histogramInfo];
+            MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:device histogramInfo:&histogramInfo];
+            size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
+            id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
+            
+            return ^ (void) {
+                return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture) {
+                    [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
+                    [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
+                    [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+                };
+            };
+        }(view.preferredDevice);
         
-        __block CVMetalTextureCacheRef textureCache;
-        CVMetalTextureCacheCreate(NULL, cacheAttributes, _device(), NULL, &textureCache);
-        CFShow(cacheAttributes);
-        CFRelease(textureUsageValue);
-        CFRelease(cacheAttributes);
+        _filter_texture = filters(); // Allocates and initializes the MPSImage filters (once);
+        // returns a block that encodes their respective commands when filter_texture is executed (every time filter_texture is called)
         
         _texture_cache =
-        ^ (CVMetalTextureCacheRef texture_cache) {
-            return ^ CVMetalTextureCacheRef (void) {
-                return texture_cache;
+        ^ {
+            CFStringRef textureCacheKeys[2] = {kCVMetalTextureCacheMaximumTextureAgeKey, kCVMetalTextureUsage};
+            float maximumTextureAge = (1.0 / view.preferredFramesPerSecond);
+            CFNumberRef maximumTextureAgeValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &maximumTextureAge);
+            MTLTextureUsage textureUsage = MTLTextureUsageShaderRead;
+            CFNumberRef textureUsageValue = CFNumberCreate(NULL, kCFNumberNSIntegerType, &textureUsage);
+            CFTypeRef textureCacheValues[2] = {maximumTextureAgeValue, textureUsageValue};
+            CFIndex textureCacheAttributesCount = 2;
+            CFDictionaryRef cacheAttributes = CFDictionaryCreate(NULL, (const void **)textureCacheKeys, (const void **)textureCacheValues, textureCacheAttributesCount, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+            
+            CVMetalTextureCacheRef textureCache;
+            CVMetalTextureCacheCreate(NULL, cacheAttributes, view.preferredDevice, NULL, &textureCache);
+            CFShow(cacheAttributes);
+            CFRelease(textureUsageValue);
+            CFRelease(cacheAttributes);
+            
+            return textureCache;
+        }();
+        
+        _texture_renderer = ^ (CVMetalTextureCacheRef texture_cache_ref) {
+            return ^id<MTLTexture> _Nonnull (CVPixelBufferRef pixel_buffer) {
+                CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
+                id<MTLTexture> texture = nil;
+                {
+                    MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
+                    CVMetalTextureRef metalTextureRef = NULL;
+                    CVMetalTextureCacheCreateTextureFromImage(NULL, texture_cache_ref, pixel_buffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixel_buffer), CVPixelBufferGetHeight(pixel_buffer), 0, &metalTextureRef);
+                    texture = CVMetalTextureGetTexture(metalTextureRef);
+                    CFRelease(metalTextureRef);
+                }
+                CVPixelBufferUnlockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
+                return texture;
             };
-        }(textureCache);
+        }(_texture_cache);
+        
+        _draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
+            return ^ (void) {
+                id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
+                id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
+                
+                _filter_texture(commandBuffer, _render_texture(), [layerDrawable texture]);
+                
+                [commandBuffer presentDrawable:layerDrawable];
+                [commandBuffer commit];
+            };
+        }(view, [view.preferredDevice newCommandQueue]);
         
         [[Camera video] setVideoOutputDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate> _Nullable)self];
     }
@@ -109,81 +161,12 @@ filter_texture = _filter_texture;
     return self;
 }
 
-- (void)_loadMetalWithView:(nonnull MTKView *)view;
-{
-    view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
-    view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
-    view.sampleCount = 1;
-    [view setPaused:TRUE];
-    [view setEnableSetNeedsDisplay:FALSE];
-    [view setAutoResizeDrawable:FALSE];
-    [view setFramebufferOnly:FALSE];
-    [view setClearColor:MTLClearColorMake(1.0, 1.0, 1.0, 1.0)];
-    [view setDevice:view.preferredDevice];
-    
-    _device =
-    ^ (id<MTLDevice> _Nonnull device) {
-        return ^ id<MTLDevice> (void) {
-            return device;
-        };
-    }(view.device);
-    
-    _draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
-        return ^ (void) {
-            id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
-            id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
-            
-            _filter_texture(commandBuffer, _render_texture(), [layerDrawable texture]);
-            
-            [commandBuffer presentDrawable:layerDrawable];
-            [commandBuffer commit];
-        };
-    }(view, [_device() newCommandQueue]);
-}
-
-- (void)_loadMPSFilters {
-    void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
-        MPSImageHistogramInfo histogramInfo = {
-                .numberOfHistogramEntries = 256,
-                .histogramForAlpha = FALSE,
-                .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
-                .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
-        };
-        MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:device histogramInfo:&histogramInfo];
-        MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:device histogramInfo:&histogramInfo];
-        size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
-        id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
-        
-        //        MPSImageGaussianBlur *gaussian_filter = [[MPSImageGaussianBlur alloc] initWithDevice:device sigma:5];
-        //        MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:device kernelDiameter:9];
-        //        MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:device kernelWidth:7 kernelHeight:17];
-        float linearGrayColorTransformValues[3] = {0.5f, 0.5f, 0.5f};
-        MPSImageSobel *sobel_filter = [[MPSImageSobel alloc] initWithDevice:device linearGrayColorTransform:linearGrayColorTransformValues];
-        const float convolutionWeights[] =  {
-            -1, 0, 1,
-            -2, 0, 2,
-            -1, 0, 1
-        };
-        MPSImageConvolution *convolution_edge = [[MPSImageConvolution alloc] initWithDevice:device kernelWidth:3 kernelHeight:3 weights:convolutionWeights];
-        return ^ (void) {
-            return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture) {
-                //                [gaussian_filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-                //                [filter2 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-                //                [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
-                //                [filter3 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-                [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-                [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-                [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
-                [sobel_filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(destinationTexture) fallbackCopyAllocator:nil];
-                [convolution_edge encodeToCommandBuffer:commandBuffer inPlaceTexture:&(destinationTexture) fallbackCopyAllocator:nil];
-            };
-        };
-    }(_device());
-    
-    _filter_texture = filters();
-}
-
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    // TO-DO: call draw_texture here, passing only the "new" parameters to an already passed render_texture block parameter
+    //        ??? draw_texture should return a block that its caller passes parameters to ???
+    
+    // The result of the new_render_texture block is assigned as the value of the new_draw_texture block (a la filters --> filter_texture)
+    
     [self setRenderTexture:^ (CVMetalTextureCacheRef texture_cache_ref, CVPixelBufferRef pixel_buffer) {
         return ^id<MTLTexture> _Nonnull (void) {
             CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
@@ -198,7 +181,7 @@ filter_texture = _filter_texture;
             CVPixelBufferUnlockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
             return texture;
         };
-    } (_texture_cache(), CMSampleBufferGetImageBuffer(sampleBuffer))];
+    } (_texture_cache, CMSampleBufferGetImageBuffer(sampleBuffer))];
 }
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {

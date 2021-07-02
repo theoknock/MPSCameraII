@@ -18,6 +18,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B9102E71268FC8CA001079D6 /* CodeCemetary.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CodeCemetary.m; sourceTree = "<group>"; };
 		B9AD953B267925D000FC473F /* Camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Camera.h; sourceTree = "<group>"; };
 		B9AD953C267925D000FC473F /* Camera.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Camera.m; sourceTree = "<group>"; };
 		B9AD953F2679294C00FC473F /* GlobalDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GlobalDispatch.h; sourceTree = "<group>"; };
@@ -80,6 +81,7 @@
 				B9AD95402679298200FC473F /* GlobalDispatch.c */,
 				B9AD953B267925D000FC473F /* Camera.h */,
 				B9AD953C267925D000FC473F /* Camera.m */,
+				B9102E71268FC8CA001079D6 /* CodeCemetary.m */,
 			);
 			path = "MetalProjectStage-1";
 			sourceTree = "<group>";
