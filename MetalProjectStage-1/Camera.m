@@ -95,7 +95,9 @@ static Camera *video;
             AVCaptureConnection *videoDataCaptureConnection = [[AVCaptureConnection alloc] initWithInputPorts:captureInput.ports output:captureOutput];
             if ([videoDataCaptureConnection isVideoOrientationSupported])
             {
-                [videoDataCaptureConnection setVideoOrientation:preferredVideoOrientation];
+                [captureOutput setAutomaticallyConfiguresOutputBufferDimensions:FALSE];
+                [captureOutput setDeliversPreviewSizedOutputBuffers:TRUE];
+                [videoDataCaptureConnection setVideoOrientation:AVCaptureVideoOrientationPortrait];
                 [videoDataCaptureConnection setVideoScaleAndCropFactor:1.0];
             }
             

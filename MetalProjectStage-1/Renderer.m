@@ -28,23 +28,23 @@ static const NSUInteger MaxBuffersInFlight = 3;
 @implementation Renderer
 {
 dispatch_semaphore_t _inFlightSemaphore;
-    id <MTLCommandQueue> _commandQueue;
-    
-    uint8_t _uniformBufferIndex;
-    matrix_float4x4 _projectionMatrix;
-    id <MTLBuffer> _dynamicUniformBuffer[MaxBuffersInFlight];
-    __block PerFrameDynamicUniforms perFrameDynamicUniforms;
-    MTLVertexDescriptor *_mtlVertexDescriptor;
-    
-    id <MTLRenderPipelineState> _pipelineState;
-    id <MTLDepthStencilState> _depthState;
-    id <MTLSamplerState> _samplerState;
-    
-    MTKMesh *_mesh;
-    id <MTLTexture> _inPlaceTexture;
-    
-    MPSImageHistogram * imageHistogram;
-    MPSImageHistogramEqualization * imageHistogramEqualization;
+id <MTLCommandQueue> _commandQueue;
+
+uint8_t _uniformBufferIndex;
+matrix_float4x4 _projectionMatrix;
+id <MTLBuffer> _dynamicUniformBuffer[MaxBuffersInFlight];
+__block PerFrameDynamicUniforms perFrameDynamicUniforms;
+MTLVertexDescriptor *_mtlVertexDescriptor;
+
+id <MTLRenderPipelineState> _pipelineState;
+id <MTLDepthStencilState> _depthState;
+id <MTLSamplerState> _samplerState;
+
+MTKMesh *_mesh;
+id <MTLTexture> _inPlaceTexture;
+
+MPSImageHistogram * imageHistogram;
+MPSImageHistogramEqualization * imageHistogramEqualization;
 }
 
 @synthesize
@@ -73,6 +73,10 @@ filter_texture = _filter_texture;
 - (void)setRenderTexture:(id<MTLTexture>  _Nonnull (^)(void))render_texture {
     _render_texture = render_texture;
     _draw_texture();
+}
+
+- (id<MTLTexture>  _Nonnull (^)(void))render_texture {
+    return _render_texture;
 }
 
 - (void)setTextureCache:(CVMetalTextureCacheRef  _Nonnull (^)(void))texture_cache {
@@ -150,7 +154,15 @@ filter_texture = _filter_texture;
     
     _draw_texture = ^ (MTKView * view) {
         return ^ (void) {
-            [view draw];
+            id<MTLTexture> texture = _render_texture();
+            id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
+            id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
+            id<MTLTexture> drawingTexture = [layerDrawable texture]; //view.currentDrawable.texture;
+            
+            _filter_texture(commandBuffer, texture, drawingTexture);
+            
+            [commandBuffer presentDrawable:layerDrawable];  // view.currentDrawable];
+            [commandBuffer commit];
         };
     }(view);
     
@@ -170,28 +182,38 @@ filter_texture = _filter_texture;
 - (void)_loadMPSFilters {
     void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
         MPSImageHistogramInfo histogramInfo = {
-            .numberOfHistogramEntries = 256,
-            .histogramForAlpha = FALSE,
-            .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
-            .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
+                .numberOfHistogramEntries = 256,
+                .histogramForAlpha = FALSE,
+                .minPixelValue = simd_make_float4(0.0, 0.0, 0.0, 0.0),
+                .maxPixelValue = simd_make_float4(1.0, 1.0, 1.0, 1.0)
         };
         MPSImageHistogram * calculation = [[MPSImageHistogram alloc] initWithDevice:device histogramInfo:&histogramInfo];
         MPSImageHistogramEqualization * equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:device histogramInfo:&histogramInfo];
         size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
         id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
-                    
-        MPSImageGaussianBlur *filter = [[MPSImageGaussianBlur alloc] initWithDevice:device sigma:5];
-        MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:device kernelDiameter:9];
-        MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:device kernelWidth:7 kernelHeight:17];
+        
+        //        MPSImageGaussianBlur *gaussian_filter = [[MPSImageGaussianBlur alloc] initWithDevice:device sigma:5];
+        //        MPSImageMedian *filter2 = [[MPSImageMedian alloc] initWithDevice:device kernelDiameter:9];
+        //        MPSImageAreaMax *filter3 = [[MPSImageAreaMax alloc] initWithDevice:device kernelWidth:7 kernelHeight:17];
+        float linearGrayColorTransformValues[3] = {0.5f, 0.5f, 0.5f};
+        MPSImageSobel *sobel_filter = [[MPSImageSobel alloc] initWithDevice:device linearGrayColorTransform:linearGrayColorTransformValues];
+        const float convolutionWeights[] =  {
+            -1, 0, 1,
+            -2, 0, 2,
+            -1, 0, 1
+        };
+        MPSImageConvolution *convolution_edge = [[MPSImageConvolution alloc] initWithDevice:device kernelWidth:3 kernelHeight:3 weights:convolutionWeights];
         return ^ (void) {
             return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture) {
-                [filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-                [filter2 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
-//                [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
-                [filter3 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
+                //                [gaussian_filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
+                //                [filter2 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
+                //                [filter3 encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+                //                [filter3 encodeToCommandBuffer:commandBuffer inPlaceTexture:&(sourceTexture) fallbackCopyAllocator:nil];
                 [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
                 [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
                 [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+                [sobel_filter encodeToCommandBuffer:commandBuffer inPlaceTexture:&(destinationTexture) fallbackCopyAllocator:nil];
+                [convolution_edge encodeToCommandBuffer:commandBuffer inPlaceTexture:&(destinationTexture) fallbackCopyAllocator:nil];
             };
         };
     }(_device());
@@ -200,101 +222,25 @@ filter_texture = _filter_texture;
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    [self setRenderTexture:^ (CVMetalTextureCacheRef texture_cache_ref) {
-        return ^id<MTLTexture> _Nonnull(void) {
-            CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-            CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    [self setRenderTexture:^ (CVMetalTextureCacheRef texture_cache_ref, CVPixelBufferRef pixel_buffer) {
+        return ^id<MTLTexture> _Nonnull (void) {
+            CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
             id<MTLTexture> texture = nil;
             {
                 MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
                 CVMetalTextureRef metalTextureRef = NULL;
-                CVMetalTextureCacheCreateTextureFromImage(NULL, texture_cache_ref, pixelBuffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer), 0, &metalTextureRef);
+                CVMetalTextureCacheCreateTextureFromImage(NULL, texture_cache_ref, pixel_buffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixel_buffer), CVPixelBufferGetHeight(pixel_buffer), 0, &metalTextureRef);
                 texture = CVMetalTextureGetTexture(metalTextureRef);
                 CFRelease(metalTextureRef);
             }
-            CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+            CVPixelBufferUnlockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
             return texture;
         };
-    } (_texture_cache())];
+    } (_texture_cache(), CMSampleBufferGetImageBuffer(sampleBuffer))];
 }
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
     
 }
-
-- (void)drawInMTKView:(MTKView *)view {
-    id<MTLTexture> texture = _render_texture();
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    id<MTLTexture> drawingTexture = view.currentDrawable.texture;
-    
-    _filter_texture(commandBuffer, texture, drawingTexture);
-    
-    [commandBuffer presentDrawable:view.currentDrawable];
-    [commandBuffer commit];
-};
-
-//- (void)drawInMTKView:(MTKView *)view {
-//    id<MTLTexture> texture = _render_texture();
-//    CGSize renderTargetSize = CGSizeMake(texture.width, texture.height);
-//    id <CAMetalDrawable> drawable = [view currentDrawable];
-//    MTLRenderPassDescriptor *renderPassDesc = [view currentRenderPassDescriptor];
-//    renderPassDesc.colorAttachments[0].loadAction = MTLLoadActionClear;
-//    renderPassDesc.colorAttachments[0].clearColor = MTLClearColorMake(0.0,0.0,0.0,1.0);
-//    renderPassDesc.renderTargetWidth = renderTargetSize.width;
-//    renderPassDesc.renderTargetHeight = renderTargetSize.height;
-//    renderPassDesc.colorAttachments[0].texture = drawable.texture;
-//
-//    id <MTLCommandBuffer> commandBuffer = [self.metalContext.commandQueue commandBuffer];
-//
-//    id <MTLParallelRenderCommandEncoder> parallelRCE = [commandBuffer parallelRenderCommandEncoderWithDescriptor:renderPassDesc];
-//    id <MTLRenderCommandEncoder> renderEncoder = [parallelRCE renderCommandEncoder];
-//
-//    [renderEncoder setRenderPipelineState:self.metalContext.renderPipelineState];
-//    [renderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
-//    [renderEncoder setDepthStencilState:self.metalContext.depthState];
-//
-//    [renderEncoder setVertexBuffer:self.metalContext.vertexBuffer offset:0 atIndex:0];
-//    [renderEncoder setVertexBuffer:self.metalContext.uniformBuffer offset:0 atIndex:1];
-//
-//    [renderEncoder setFragmentTexture:texture atIndex:0];
-//    [renderEncoder setFragmentSamplerState:self.metalContext.samplerState atIndex:0];
-//
-//    [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:6];
-//
-//    [renderEncoder endEncoding];
-//
-//    [parallelRCE endEncoding];
-//
-//    [commandBuffer presentDrawable:^(id <MTLTexture> interim_texture, id <MTLCommandBuffer> commandBuffer)
-//     {
-//        MPSImageHistogram *calculation;
-//        MPSImageHistogramEqualization *equalization;
-//        MPSImageHistogramInfo histogramInfo;
-//        histogramInfo.numberOfHistogramEntries = 256;
-//        histogramInfo.histogramForAlpha = TRUE;
-//        histogramInfo.minPixelValue = (vector_float4){0,0,0,0};
-//        histogramInfo.maxPixelValue = (vector_float4){1,1,1,1};
-//        calculation = [[MPSImageHistogram alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
-//        MTLRegion clip_region = MTLRegionMake2D(CGRectGetMidX(view.frame), CGRectGetMidY(view.frame),  CGRectGetWidth(view.frame), CGRectGetHeight(view.frame));
-//        [calculation setClipRectSource:clip_region];
-//        equalization = [[MPSImageHistogramEqualization alloc] initWithDevice:_device() histogramInfo:&histogramInfo];
-//        NSUInteger bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
-//        MTLResourceOptions options;
-//        options = MTLResourceStorageModePrivate;
-//        id<MTLBuffer> histogramInfoBuffer = [_device() newBufferWithLength:bufferLength options:options];
-//        [calculation encodeToCommandBuffer:commandBuffer sourceTexture:interim_texture histogram:histogramInfoBuffer histogramOffset:0];
-//        [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:interim_texture histogram:histogramInfoBuffer histogramOffset:0];
-//        [equalization setClipRect:clip_region];
-//        id <CAMetalDrawable> next_drawable = ((CAMetalLayer *)view.layer).nextDrawable;
-//        if (next_drawable)
-//            [equalization encodeToCommandBuffer:commandBuffer sourceTexture:interim_texture destinationTexture:next_drawable.texture];
-//
-//        return next_drawable;
-//
-//    } (renderPassDesc.colorAttachments[0].texture, commandBuffer)];
-//
-//    [commandBuffer commit];
-//    [commandBuffer waitUntilScheduled]
-//}
 
 @end
