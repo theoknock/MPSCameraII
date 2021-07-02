@@ -152,21 +152,17 @@ filter_texture = _filter_texture;
         };
     }(view.device);
     
-    _draw_texture = ^ (MTKView * view) {
+    _draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
         return ^ (void) {
-            id<MTLTexture> texture = _render_texture();
-            id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
+            id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
             id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
-            id<MTLTexture> drawingTexture = [layerDrawable texture]; //view.currentDrawable.texture;
             
-            _filter_texture(commandBuffer, texture, drawingTexture);
+            _filter_texture(commandBuffer, _render_texture(), [layerDrawable texture]);
             
-            [commandBuffer presentDrawable:layerDrawable];  // view.currentDrawable];
+            [commandBuffer presentDrawable:layerDrawable];
             [commandBuffer commit];
         };
-    }(view);
-    
-    _commandQueue = [_device() newCommandQueue];
+    }(view, [_device() newCommandQueue]);
 }
 
 - (void)_initInPlaceTexture {
