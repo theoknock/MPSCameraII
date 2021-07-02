@@ -70,8 +70,7 @@ filter_texture = _filter_texture;
 
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 {
-    self = [super init];
-    if(self)
+    if (self = [super init])
     {
         view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
         view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
