@@ -6,14 +6,8 @@
 //
 
 #import <simd/simd.h>
-#import <ModelIO/ModelIO.h>
-
 #import "Renderer.h"
 #import "Camera.h"
-
-#import "ShaderTypes.h"
-
-static const NSUInteger MaxBuffersInFlight = 3;
 
 @interface Renderer ()
 
@@ -27,24 +21,8 @@ static const NSUInteger MaxBuffersInFlight = 3;
 
 @implementation Renderer
 {
-dispatch_semaphore_t _inFlightSemaphore;
-id <MTLCommandQueue> _commandQueue;
-
-uint8_t _uniformBufferIndex;
-matrix_float4x4 _projectionMatrix;
-id <MTLBuffer> _dynamicUniformBuffer[MaxBuffersInFlight];
-__block PerFrameDynamicUniforms perFrameDynamicUniforms;
-MTLVertexDescriptor *_mtlVertexDescriptor;
-
-id <MTLRenderPipelineState> _pipelineState;
-id <MTLDepthStencilState> _depthState;
-id <MTLSamplerState> _samplerState;
-
-MTKMesh *_mesh;
-id <MTLTexture> _inPlaceTexture;
-
-MPSImageHistogram * imageHistogram;
-MPSImageHistogramEqualization * imageHistogramEqualization;
+    MPSImageHistogram * imageHistogram;
+    MPSImageHistogramEqualization * imageHistogramEqualization;
 }
 
 @synthesize
@@ -100,9 +78,7 @@ filter_texture = _filter_texture;
     self = [super init];
     if(self)
     {
-        _inFlightSemaphore = dispatch_semaphore_create(MaxBuffersInFlight);
         [self _loadMetalWithView:view];
-        [self _initInPlaceTexture];
         [self _loadMPSFilters];
         
         CFStringRef textureCacheKeys[2] = {kCVMetalTextureCacheMaximumTextureAgeKey, kCVMetalTextureUsage};
@@ -163,16 +139,6 @@ filter_texture = _filter_texture;
             [commandBuffer commit];
         };
     }(view, [_device() newCommandQueue]);
-}
-
-- (void)_initInPlaceTexture {
-    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-    textureDescriptor.textureType = MTLTextureType2D;
-    textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    textureDescriptor.width = 2160.0;
-    textureDescriptor.height = 3840.0;
-    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
-    _inPlaceTexture = [_device() newTextureWithDescriptor:textureDescriptor];
 }
 
 - (void)_loadMPSFilters {
