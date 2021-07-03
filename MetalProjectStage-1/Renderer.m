@@ -5,6 +5,8 @@
 //  Created by Xcode Developer on 6/2/21.
 //
 // A leaner, meaner approach to using Metal Performance Shaders for performing image-processing techniques to live video.
+// It is able to apply histogram equalization to 60 frames per second of live video at a resolution of 3840 X 2160 using between 6% and 12% of the CPU.
+// That is expected to drop precipitously as development continues.
 // It is resource-tight: Any object needing allocation once is allocated once and reused; as soon as an allocated object is no longer needed, it is disposed of automatically whether ARC is enabled or otherwise
 // De minimus execution calls (for example: the MTKViewDelegate protocol methods have been replaced with block equivalents without sacrificing any functionality)
 // (there's much more to it than this...)
@@ -26,48 +28,45 @@
 // filter_texture can be modified to use Core Image or Metal vertex, fragment and/or compute (kernel) functions
 // draw_texture can be modified to write the texture to a file
 
-#import <simd/simd.h>
+
 #import "Renderer.h"
 #import "Camera.h"
 
-@interface Renderer ()
-
-@property (strong, nonatomic, setter=setRenderTexture:) id<MTLTexture> _Nonnull(^ _Nonnull render_texture)(CVPixelBufferRef pixel_buffer);
-@property (strong, nonatomic, setter=setDrawTexture:) void(^draw_texture)(id<MTLTexture> texture);
-@property (strong, nonatomic, setter=setFilterTexture:) void(^filter_texture)(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture);
-
-@end
-
 @implementation Renderer
-
-@synthesize
-draw_texture   = _draw_texture,
-render_texture = _render_texture,
-filter_texture = _filter_texture;
-
-- (void)setDrawTexture:(void (^)(id<MTLTexture>))draw_texture {
-    _draw_texture = draw_texture;
+{
+    id<MTLTexture> _Nonnull (^ _Nonnull _render_texture)(CVPixelBufferRef pixel_buffer);
+    void (^_draw_texture)(id<MTLTexture> texture);
+    void (^_filter_texture)(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture);
 }
 
-- (void (^)(id<MTLTexture>))draw_texture {
-    return _draw_texture;
-}
-
-- (void)setRenderTexture:(id<MTLTexture>  _Nonnull (^)(CVPixelBufferRef))render_texture {
-    _render_texture = render_texture;
-}
-
-- (id<MTLTexture>  _Nonnull (^)(CVPixelBufferRef))render_texture {
-    return _render_texture;
-}
-
-- (void)setFilterTexture:(void (^)(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>))filter_texture {
-    _filter_texture = filter_texture;
-}
-
-- (void (^)(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>))filter_texture {
-    return _filter_texture;
-}
+//@synthesize
+//draw_texture   = _draw_texture,
+//render_texture = _render_texture,
+//filter_texture = _filter_texture;
+//
+//- (void)setDrawTexture:(void (^)(id<MTLTexture>))draw_texture {
+//    _draw_texture = draw_texture;
+//}
+//
+//- (void (^)(id<MTLTexture>))draw_texture {
+//    return _draw_texture;
+//}
+//
+//- (void)setRenderTexture:(id<MTLTexture>  _Nonnull (^)(CVPixelBufferRef))render_texture {
+//    _render_texture = render_texture;
+//}
+//
+//- (id<MTLTexture>  _Nonnull (^)(CVPixelBufferRef))render_texture {
+//    return _render_texture;
+//}
+//
+//- (void)setFilterTexture:(void (^)(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>))filter_texture {
+//    _filter_texture = filter_texture;
+//}
+//
+//- (void (^)(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>))filter_texture {
+//    return _filter_texture;
+//}
 
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 {

@@ -11,7 +11,7 @@
 		B9AD95412679298300FC473F /* GlobalDispatch.c in Sources */ = {isa = PBXBuildFile; fileRef = B9AD95402679298200FC473F /* GlobalDispatch.c */; };
 		B9E82A4F2667E046004824C5 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A4E2667E046004824C5 /* AppDelegate.m */; };
 		B9E82A522667E046004824C5 /* Renderer.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A512667E046004824C5 /* Renderer.m */; };
-		B9E82A552667E046004824C5 /* GameViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A542667E046004824C5 /* GameViewController.m */; };
+		B9E82A552667E046004824C5 /* MetalViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A542667E046004824C5 /* MetalViewController.m */; };
 		B9E82A5B2667E046004824C5 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B9E82A592667E046004824C5 /* Main.storyboard */; };
 		B9E82A5D2667E048004824C5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9E82A5C2667E048004824C5 /* Assets.xcassets */; };
 		B9E82A602667E048004824C5 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = B9E82A5F2667E048004824C5 /* main.m */; };
@@ -28,8 +28,8 @@
 		B9E82A4E2667E046004824C5 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		B9E82A502667E046004824C5 /* Renderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Renderer.h; sourceTree = "<group>"; wrapsLines = 0; };
 		B9E82A512667E046004824C5 /* Renderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Renderer.m; sourceTree = "<group>"; wrapsLines = 0; };
-		B9E82A532667E046004824C5 /* GameViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GameViewController.h; sourceTree = "<group>"; };
-		B9E82A542667E046004824C5 /* GameViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GameViewController.m; sourceTree = "<group>"; };
+		B9E82A532667E046004824C5 /* MetalViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalViewController.h; sourceTree = "<group>"; };
+		B9E82A542667E046004824C5 /* MetalViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetalViewController.m; sourceTree = "<group>"; };
 		B9E82A5A2667E046004824C5 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		B9E82A5C2667E048004824C5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9E82A5E2667E048004824C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -71,8 +71,8 @@
 				B9E82A4E2667E046004824C5 /* AppDelegate.m */,
 				B9E82A502667E046004824C5 /* Renderer.h */,
 				B9E82A512667E046004824C5 /* Renderer.m */,
-				B9E82A532667E046004824C5 /* GameViewController.h */,
-				B9E82A542667E046004824C5 /* GameViewController.m */,
+				B9E82A532667E046004824C5 /* MetalViewController.h */,
+				B9E82A542667E046004824C5 /* MetalViewController.m */,
 				B9E82A592667E046004824C5 /* Main.storyboard */,
 				B9E82A5C2667E048004824C5 /* Assets.xcassets */,
 				B9E82A5E2667E048004824C5 /* Info.plist */,
@@ -164,7 +164,7 @@
 				B9E82A602667E048004824C5 /* main.m in Sources */,
 				B9AD95412679298300FC473F /* GlobalDispatch.c in Sources */,
 				B9E82A522667E046004824C5 /* Renderer.m in Sources */,
-				B9E82A552667E046004824C5 /* GameViewController.m in Sources */,
+				B9E82A552667E046004824C5 /* MetalViewController.m in Sources */,
 				B9AD953D267925D000FC473F /* Camera.m in Sources */,
 				B9E82A4F2667E046004824C5 /* AppDelegate.m in Sources */,
 			);

@@ -1,17 +1,16 @@
 //
-//  GameViewController.m
+//  MetalViewController.m
 //  MetalProjectStage-1
 //
 //  Created by Xcode Developer on 6/2/21.
 //
 
-#import "GameViewController.h"
+#import "MetalViewController.h"
 #import "Renderer.h"
 
-@implementation GameViewController
+@implementation MetalViewController
 {
     MTKView *_view;
-
     Renderer *_renderer;
 }
 
@@ -25,6 +24,7 @@
     _view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
     _view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     _view.sampleCount = 1;
+    _view.preferredFramesPerSecond = 60;
     [_view setPaused:TRUE];
     [_view setEnableSetNeedsDisplay:FALSE];
     [_view setAutoResizeDrawable:FALSE];

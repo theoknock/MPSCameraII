@@ -1,5 +1,5 @@
 //
-//  GameViewController.h
+//  MetalViewController.h
 //  MetalProjectStage-1
 //
 //  Created by Xcode Developer on 6/2/21.
@@ -10,7 +10,6 @@
 #import <MetalKit/MetalKit.h>
 #import "Renderer.h"
 
-// Our iOS view controller
-@interface GameViewController : UIViewController
+@interface MetalViewController : UIViewController
 
 @end
