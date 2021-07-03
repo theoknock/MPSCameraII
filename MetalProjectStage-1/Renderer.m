@@ -12,8 +12,6 @@
 // (there's much more to it than this...)
 // Its component-based programming model affords easy adaptation to any input and output
 //
-// What it lacks:
-// A structure for stacking image-processing tasks in a way that enforces best practices
 
 // The key components in the image-processing chain are:
 // render_texture converts a CMSampleBuffer to an id<MTLTexture>
