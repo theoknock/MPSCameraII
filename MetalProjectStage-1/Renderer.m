@@ -4,6 +4,27 @@
 //
 //  Created by Xcode Developer on 6/2/21.
 //
+// A leaner, meaner approach to using Metal Performance Shaders for performing image-processing techniques to live video.
+// It is resource-tight: Any object needing allocation once is allocated once and reused; as soon as an allocated object is no longer needed, it is disposed of automatically whether ARC is enabled or otherwise
+// De minimus execution calls (for example: the MTKViewDelegate protocol methods have been replaced with block equivalents without sacrificing any functionality)
+// (there's much more to it than this...)
+// Its component-based programming model affords easy adaptation to any input and output
+//
+// What it lacks:
+// A structure for stacking image-processing tasks in a way that enforces best practices
+
+// The key components in the image-processing chain are:
+// render_texture converts a CMSampleBuffer to an id<MTLTexture>
+// filter_texture processes the id<MTLTexture> using Metal Performance Shaders
+// draw_texture displays the id<MTLTexture>
+//
+// The mutable components form a single, immutable image-processing chain (or pipe), which starts with input from a source (video, photos) and ends with output to a destination (screen, storage).
+//
+// The components and their order are statically defined; however, each component can be modified to render, filter and draw a texture from any source to any output.
+// For example:
+// render_texture can be modified to convert a UIImage to an id<MTLTexture>;
+// filter_texture can be modified to use Core Image or Metal vertex, fragment and/or compute (kernel) functions
+// draw_texture can be modified to write the texture to a file
 
 #import <simd/simd.h>
 #import "Renderer.h"
@@ -11,17 +32,13 @@
 
 @interface Renderer ()
 
-@property (strong, nonatomic, setter=setRenderTexture:) id<MTLTexture>_Nonnull(^ _Nonnull render_texture)(CVPixelBufferRef pixel_buffer);
+@property (strong, nonatomic, setter=setRenderTexture:) id<MTLTexture> _Nonnull(^ _Nonnull render_texture)(CVPixelBufferRef pixel_buffer);
 @property (strong, nonatomic, setter=setDrawTexture:) void(^draw_texture)(id<MTLTexture> texture);
 @property (strong, nonatomic, setter=setFilterTexture:) void(^filter_texture)(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture);
 
 @end
 
 @implementation Renderer
-{
-    MPSImageHistogram * imageHistogram;
-    MPSImageHistogramEqualization * imageHistogramEqualization;
-}
 
 @synthesize
 draw_texture   = _draw_texture,
@@ -55,17 +72,7 @@ filter_texture = _filter_texture;
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 {
     if (self = [super init])
-    {
-        view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
-        view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
-        view.sampleCount = 1;
-        [view setPaused:TRUE];
-        [view setEnableSetNeedsDisplay:FALSE];
-        [view setAutoResizeDrawable:FALSE];
-        [view setFramebufferOnly:FALSE];
-        [view setClearColor:MTLClearColorMake(1.0, 1.0, 1.0, 1.0)];
-        [view setDevice:view.preferredDevice];
-        
+    {        
         void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
             MPSImageHistogramInfo histogramInfo = {
                 .numberOfHistogramEntries = 256,
@@ -123,10 +130,13 @@ filter_texture = _filter_texture;
         
         _draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
             return ^ (id<MTLTexture> texture) {
+                // The command buffer and drawable have to be declared inside the draw_texture block because
+                // additional processing may be performed before or after filter_texture executes
                 id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
                 id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
+                id<MTLTexture> drawableTexture = [layerDrawable texture];
                 
-                _filter_texture(commandBuffer, texture, [layerDrawable texture]);
+                _filter_texture(commandBuffer, texture, drawableTexture);
                 
                 [commandBuffer presentDrawable:layerDrawable];
                 [commandBuffer commit];
@@ -141,10 +151,6 @@ filter_texture = _filter_texture;
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     _draw_texture(_render_texture(CMSampleBufferGetImageBuffer(sampleBuffer)));
-}
-
-- (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-    
 }
 
 @end

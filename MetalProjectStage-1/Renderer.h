@@ -11,7 +11,7 @@
 
 // Our platform independent renderer class.   Implements the MTKViewDelegate protocol which
 //   allows it to accept per-frame update and drawable resize callbacks.
-@interface Renderer : NSObject <MTKViewDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface Renderer : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 
