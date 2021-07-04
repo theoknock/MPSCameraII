@@ -20,11 +20,11 @@
     if (self = [super init])
     {
         create_texture = ^ (CVMetalTextureCacheRef texture_cache_ref) {
+           __block id<MTLTexture> texture = nil;
+            MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
             return ^id<MTLTexture> _Nonnull (CVPixelBufferRef pixel_buffer) {
                 CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
-                id<MTLTexture> texture = nil;
                 {
-                    MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
                     CVMetalTextureRef metalTextureRef = NULL;
                     CVMetalTextureCacheCreateTextureFromImage(NULL, texture_cache_ref, pixel_buffer, NULL, pixelFormat, CVPixelBufferGetWidth(pixel_buffer), CVPixelBufferGetHeight(pixel_buffer), 0, &metalTextureRef);
                     texture = CVMetalTextureGetTexture(metalTextureRef);
@@ -37,7 +37,7 @@
             CFStringRef textureCacheKeys[2] = {kCVMetalTextureCacheMaximumTextureAgeKey, kCVMetalTextureUsage};
             float maximumTextureAge = (1.0 / view.preferredFramesPerSecond);
             CFNumberRef maximumTextureAgeValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &maximumTextureAge);
-            MTLTextureUsage textureUsage = MTLTextureUsageShaderRead;
+            MTLTextureUsage textureUsage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
             CFNumberRef textureUsageValue = CFNumberCreate(NULL, kCFNumberNSIntegerType, &textureUsage);
             CFTypeRef textureCacheValues[2] = {maximumTextureAgeValue, textureUsageValue};
             CFIndex textureCacheAttributesCount = 2;
@@ -77,6 +77,8 @@
                 id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
                 id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
                 id<MTLTexture> drawableTexture = [layerDrawable texture];
+                
+                [commandBuffer enqueue];
                 
                 filter(commandBuffer, drawableTexture);
                 

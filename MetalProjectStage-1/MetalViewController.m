@@ -24,7 +24,7 @@
     _view.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
     _view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     _view.sampleCount = 1;
-    _view.preferredFramesPerSecond = 60;
+    [_view setPreferredFramesPerSecond:60];
     [_view setPaused:TRUE];
     [_view setEnableSetNeedsDisplay:FALSE];
     [_view setAutoResizeDrawable:FALSE];
