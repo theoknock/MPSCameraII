@@ -4,44 +4,22 @@
 //
 //  Created by Xcode Developer on 6/2/21.
 //
-// A leaner, meaner approach to using Metal Performance Shaders for performing image-processing techniques to live video.
-// It is able to apply histogram equalization to 60 frames per second of live video at a resolution of 3840 X 2160 using between 6% and 12% of the CPU.
-// That is expected to drop precipitously as development continues.
-// It is resource-tight: Any object needing allocation once is allocated once and reused; as soon as an allocated object is no longer needed, it is disposed of automatically whether ARC is enabled or otherwise
-// De minimus execution calls (for example: the MTKViewDelegate protocol methods have been replaced with block equivalents without sacrificing any functionality)
-// (there's much more to it than this...)
-// Its component-based programming model affords easy adaptation to any input and output
-//
-
-// The key components in the image-processing chain are:
-// render_texture converts a CMSampleBuffer to an id<MTLTexture>
-// filter_texture processes the id<MTLTexture> using Metal Performance Shaders
-// draw_texture displays the id<MTLTexture>
-//
-// The mutable components form a single, immutable image-processing chain (or pipe), which starts with input from a source (video, photos) and ends with output to a destination (screen, storage).
-//
-// The components and their order are statically defined; however, each component can be modified to render, filter and draw a texture from any source to any output.
-// For example:
-// render_texture can be modified to convert a UIImage to an id<MTLTexture>;
-// filter_texture can be modified to use Core Image or Metal vertex, fragment and/or compute (kernel) functions
-// draw_texture can be modified to write the texture to a file
-
 
 #import "Renderer.h"
 #import "Camera.h"
 
 @implementation Renderer
 {
-    id<MTLTexture> _Nonnull (^ _Nonnull _render_texture)(CVPixelBufferRef pixel_buffer);
-    void (^_filter_texture)(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture);
-    void (^_draw_texture)(id<MTLTexture> texture);
+    id<MTLTexture> (^create_texture)(CVPixelBufferRef);
+    void (^(^filter_texture)(id<MTLTexture>))(id<MTLCommandBuffer>, id<MTLTexture>);
+    void (^draw_texture)(void (^)(id<MTLCommandBuffer>, id<MTLTexture>));
 }
 
 - (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 {
     if (self = [super init])
     {
-        _render_texture = ^ (CVMetalTextureCacheRef texture_cache_ref) {
+        create_texture = ^ (CVMetalTextureCacheRef texture_cache_ref) {
             return ^id<MTLTexture> _Nonnull (CVPixelBufferRef pixel_buffer) {
                 CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
                 id<MTLTexture> texture = nil;
@@ -73,7 +51,7 @@
             return textureCache;
         }(view.preferredDevice));
         
-        void(^(^filters)(void))(id<MTLCommandBuffer>, id<MTLTexture>, id<MTLTexture>) = ^ (id<MTLDevice> device) {
+        filter_texture = ^ (id<MTLDevice> device) {
             MPSImageHistogramInfo histogramInfo = {
                 .numberOfHistogramEntries = 256,
                 .histogramForAlpha = FALSE,
@@ -85,8 +63,8 @@
             size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
             id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
             
-            return ^ (void) {
-                return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> sourceTexture, id<MTLTexture> destinationTexture) {
+            return ^ (id<MTLTexture> sourceTexture) {
+                return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> destinationTexture) {
                     [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
                     [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
                     [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
@@ -94,17 +72,13 @@
             };
         }(view.preferredDevice);
         
-        _filter_texture = filters();
-        
-        _draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
-            return ^ (id<MTLTexture> texture) {
-                // The command buffer and drawable have to be declared inside the draw_texture block because
-                // additional processing may be performed before or after filter_texture executes
+        draw_texture = ^ (MTKView * view, id<MTLCommandQueue> command_queue) {
+            return ^ (void (^filter)(id<MTLCommandBuffer>, id<MTLTexture>)) {
                 id<MTLCommandBuffer> commandBuffer = [command_queue commandBuffer];
                 id<CAMetalDrawable> layerDrawable = [(CAMetalLayer *)(view.layer) nextDrawable];
                 id<MTLTexture> drawableTexture = [layerDrawable texture];
                 
-                _filter_texture(commandBuffer, texture, drawableTexture);
+                filter(commandBuffer, drawableTexture);
                 
                 [commandBuffer presentDrawable:layerDrawable];
                 [commandBuffer commit];
@@ -118,7 +92,7 @@
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    _draw_texture(_render_texture(CMSampleBufferGetImageBuffer(sampleBuffer)));
+    draw_texture(filter_texture(create_texture(CMSampleBufferGetImageBuffer(sampleBuffer))));
 }
 
 @end
