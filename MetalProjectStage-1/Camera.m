@@ -70,7 +70,7 @@ static Camera *video;
                 [captureDevice unlockForConfiguration];
             }
             
-            NSError * error;
+            __autoreleasing NSError * error;
             captureInput = [AVCaptureDeviceInput deviceInputWithDevice:captureDevice error:&error];
             if ([captureSession canAddInput:captureInput])
                 [captureSession addInput:captureInput];
@@ -83,11 +83,11 @@ static Camera *video;
             if ([captureSession canAddOutput:captureOutput])
                 [captureSession addOutput:captureOutput];
             
-            AVCaptureVideoOrientation __block preferredVideoOrientation = AVCaptureVideoOrientationPortrait;
-            UIInterfaceOrientation interfaceOrientation = [[[[UIApplication sharedApplication] windows] firstObject] windowScene].interfaceOrientation;
-            if (interfaceOrientation != UIInterfaceOrientationUnknown ) {
-                preferredVideoOrientation = (AVCaptureVideoOrientation)interfaceOrientation;
-            }
+//            AVCaptureVideoOrientation __block preferredVideoOrientation = AVCaptureVideoOrientationPortrait;
+//            UIInterfaceOrientation interfaceOrientation = [[[[UIApplication sharedApplication] windows] firstObject] windowScene].interfaceOrientation;
+//            if (interfaceOrientation != UIInterfaceOrientationUnknown ) {
+//                preferredVideoOrientation = (AVCaptureVideoOrientation)interfaceOrientation;
+//            }
 //            previewLayer = (AVCaptureVideoPreviewLayer *)self.cameraView.layer;
 //            previewLayer.session = captureSession;
 //            previewLayer.connection.videoOrientation = preferredVideoOrientation;

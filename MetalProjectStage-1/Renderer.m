@@ -10,18 +10,17 @@
 
 @implementation Renderer
 {
-    id<MTLTexture> (^create_texture)(CVPixelBufferRef);
-    void (^(^filter_texture)(id<MTLTexture>))(id<MTLCommandBuffer>, id<MTLTexture>);
-    void (^draw_texture)(void (^)(id<MTLCommandBuffer>, id<MTLTexture>));
+    id<MTLTexture>(^create_texture)(CVPixelBufferRef);
+    void(^(^filter_texture)(id<MTLTexture>))(id<MTLCommandBuffer>, id<MTLTexture>);
+    void(^draw_texture)(void(^)(id<MTLCommandBuffer>, id<MTLTexture>));
 }
 
-- (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
-{
+- (nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view {
     if (self = [super init])
     {
         create_texture = ^ (CVMetalTextureCacheRef texture_cache_ref) {
            __block id<MTLTexture> texture = nil;
-            MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
+            MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
             return ^id<MTLTexture> _Nonnull (CVPixelBufferRef pixel_buffer) {
                 CVPixelBufferLockBaseAddress(pixel_buffer, kCVPixelBufferLock_ReadOnly);
                 {
@@ -63,11 +62,28 @@
             size_t bufferLength = [calculation histogramSizeForSourceFormat:MTLPixelFormatBGRA8Unorm_sRGB];
             id<MTLBuffer> histogramInfoBuffer = [calculation.device newBufferWithLength:bufferLength options:MTLResourceStorageModePrivate];
             
-            return ^ (id<MTLTexture> sourceTexture) {
-                return ^ (id<MTLCommandBuffer> commandBuffer, id<MTLTexture> destinationTexture) {
-                    [calculation encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-                    [equalization encodeTransformToCommandBuffer:commandBuffer sourceTexture:sourceTexture histogram:histogramInfoBuffer histogramOffset:0];
-                    [equalization encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:destinationTexture];
+            const float weights[9] = {
+                -1.0, 0.0, 1.0,
+                -2.0, 0.0, 2.0,
+                -1.0, 0.0, 1.0
+            };
+            MPSImageConvolution * convolution = [[MPSImageConvolution alloc] initWithDevice:device kernelWidth:3 kernelHeight:3 weights:weights];
+            [convolution setBias:0.0];
+            
+            MTLTextureDescriptor * descriptor = [MTLTextureDescriptor
+                                                 texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm_sRGB
+                                                 width:view.currentDrawable.texture.width
+                                                 height:view.currentDrawable.texture.height
+                                                 mipmapped:FALSE];
+            [descriptor setUsage:MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead];
+            id<MTLTexture> newSourceTexture = [device newTextureWithDescriptor:descriptor];
+            
+            return ^ (id<MTLTexture> source_texture) {
+                return ^ (id<MTLCommandBuffer> command_buffer, id<MTLTexture> destination_texture) {
+                    [calculation encodeToCommandBuffer:command_buffer sourceTexture:source_texture histogram:histogramInfoBuffer histogramOffset:0];
+                    [equalization encodeTransformToCommandBuffer:command_buffer sourceTexture:source_texture histogram:histogramInfoBuffer histogramOffset:0];
+                    [equalization encodeToCommandBuffer:command_buffer sourceTexture:source_texture destinationTexture:newSourceTexture];
+                    [convolution encodeToCommandBuffer:command_buffer sourceTexture:newSourceTexture destinationTexture:destination_texture];
                 };
             };
         }(view.preferredDevice);
