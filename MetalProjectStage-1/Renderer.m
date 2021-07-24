@@ -53,54 +53,54 @@
             return textureCache;
         }(view.preferredDevice));
         
-        filter_texture_shader = ^ (id<MTLDevice> device) {
-            // Load the fragment program into the library
-            id <MTLLibrary> _defaultLibrary;
-            id <MTLRenderPipelineState> _pipelineState;
-            id <MTLBuffer> _vertexBuffer;
-            id <MTLDepthStencilState> _depthState;
-            id <MTLFunction> fragmentProgram = [_defaultLibrary newFunctionWithName:@"fragmentColorConversion"];
-            
-            // Load the vertex program into the library
-            id <MTLFunction> vertexProgram = [_defaultLibrary newFunctionWithName:@"vertexPassthrough"];
-            
-            // Setup the vertex buffers
-            _vertexBuffer = [device newBufferWithBytes:cubeVertexData length:sizeof(cubeVertexData) options:MTLResourceOptionCPUCacheModeDefault];
-            _vertexBuffer.label = @"Vertices";
-            
-            // Create a reusable pipeline state
-            MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-            pipelineStateDescriptor.label = @"MyPipeline";
-            [pipelineStateDescriptor setSampleCount: 1];
-            [pipelineStateDescriptor setVertexFunction:vertexProgram];
-            [pipelineStateDescriptor setFragmentFunction:fragmentProgram];
-            pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-            pipelineStateDescriptor.depthAttachmentPixelFormat = MTLPixelFormatInvalid;
-            
-            NSError* error = NULL;
-            _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
-            if (!_pipelineState) {
-                NSLog(@"Failed to created pipeline state, error %@", error);
-            }
-            
-            MTLDepthStencilDescriptor *depthStateDesc = [[MTLDepthStencilDescriptor alloc] init];
-            depthStateDesc.depthCompareFunction = MTLCompareFunctionAlways;
-            depthStateDesc.depthWriteEnabled = NO;
-            _depthState = [_device newDepthStencilStateWithDescriptor:depthStateDesc];
-        
-            if (_renderPassDescriptor == nil)
-                _renderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
-            
-            _renderPassDescriptor.colorAttachments[0].texture = texture;
-            _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-            _renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.65f, 0.65f, 0.65f, 1.0f);
-            _renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-             return ^ (id<MTLTexture> source_texture) {
-                 return ^ (id<MTLCommandBuffer> command_buffer, id<MTLTexture> destination_texture) {
-                    //
-                 };
-             };
-         }(view.preferredDevice);
+//        filter_texture_shader = ^ (id<MTLDevice> device) {
+//            // Load the fragment program into the library
+//            id <MTLLibrary> _defaultLibrary;
+//            id <MTLRenderPipelineState> _pipelineState;
+//            id <MTLBuffer> _vertexBuffer;
+//            id <MTLDepthStencilState> _depthState;
+//            id <MTLFunction> fragmentProgram = [_defaultLibrary newFunctionWithName:@"fragmentColorConversion"];
+//            
+//            // Load the vertex program into the library
+//            id <MTLFunction> vertexProgram = [_defaultLibrary newFunctionWithName:@"vertexPassthrough"];
+//            
+//            // Setup the vertex buffers
+//            _vertexBuffer = [device newBufferWithBytes:cubeVertexData length:sizeof(cubeVertexData) options:MTLResourceOptionCPUCacheModeDefault];
+//            _vertexBuffer.label = @"Vertices";
+//            
+//            // Create a reusable pipeline state
+//            MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+//            pipelineStateDescriptor.label = @"MyPipeline";
+//            [pipelineStateDescriptor setSampleCount: 1];
+//            [pipelineStateDescriptor setVertexFunction:vertexProgram];
+//            [pipelineStateDescriptor setFragmentFunction:fragmentProgram];
+//            pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+//            pipelineStateDescriptor.depthAttachmentPixelFormat = MTLPixelFormatInvalid;
+//            
+//            NSError* error = NULL;
+//            _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor error:&error];
+//            if (!_pipelineState) {
+//                NSLog(@"Failed to created pipeline state, error %@", error);
+//            }
+//            
+//            MTLDepthStencilDescriptor *depthStateDesc = [[MTLDepthStencilDescriptor alloc] init];
+//            depthStateDesc.depthCompareFunction = MTLCompareFunctionAlways;
+//            depthStateDesc.depthWriteEnabled = NO;
+//            _depthState = [_device newDepthStencilStateWithDescriptor:depthStateDesc];
+//        
+//            if (_renderPassDescriptor == nil)
+//                _renderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
+//            
+//            _renderPassDescriptor.colorAttachments[0].texture = texture;
+//            _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+//            _renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.65f, 0.65f, 0.65f, 1.0f);
+//            _renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+//             return ^ (id<MTLTexture> source_texture) {
+//                 return ^ (id<MTLCommandBuffer> command_buffer, id<MTLTexture> destination_texture) {
+//                    //
+//                 };
+//             };
+//         }(view.preferredDevice);
         
         filter_texture = ^ (id<MTLDevice> device) {
             MPSImageHistogramInfo histogramInfo = {
