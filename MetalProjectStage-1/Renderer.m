@@ -4,7 +4,7 @@
 //
 //  Created by Xcode Developer on 6/2/21.
 //
-// TO-DO: Add new filter_texture block that uses shaders
+// TO-DO: Add new filter_texture block that uses shaders (use to fit camera view in viewport
 
 #import "Renderer.h"
 #import "Camera.h"
